@@ -1,0 +1,21 @@
+{
+  "deviceName": "Dymo LabelWriter 450",
+  "protoco": "you_ess_bee",
+  "vendorId": "0x0922",
+  "productId": "0x001d",
+  "description": "Label printer for standard address labels",
+  "commands": [
+    {
+      "name": "printLabel",
+      "dataType": "string",
+      "interface": ["command"],
+      "description": "Send label data to printer"
+    },
+    {
+      "name": "status",
+      "dataType": "uint8",
+      "interface": ["query"],
+      "description": "Get printer status code"
+    }
+  ]
+}
