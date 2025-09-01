@@ -1,0 +1,21 @@
+{
+  "deviceName": "Mark IV Imaginary device",
+  "protocol": "RS-232",
+  "vendorId": "0x01A4",
+  "productId": "0x0045",
+  "description": "Label printer for standard address labels",
+  "commands": [
+    {
+      "name": "selfDestruct",
+      "dataType": "string",
+      "interface": ["command"],
+      "description": "Send label data to printer"
+    },
+    {
+      "name": "queryMood",
+      "dataType": "uint8",
+      "interface": ["query"],
+      "description": "Get printer status code"
+    }
+  ]
+}
