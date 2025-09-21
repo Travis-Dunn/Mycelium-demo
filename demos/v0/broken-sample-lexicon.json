@@ -1,9 +1,9 @@
 {
-  "deviceName": "Dymo LabelWriter 450",
-  "protoco": "you_ess_bee",
-  "vendorId": "0x0922",
-  "productId": "0x001d",
-  "description": "Label printer for standard address labels",
+  "deviceName": "Mark IV Imaginary device",
+  "protocol": "RS-232",
+  "vendorId": "0x01A4",
+  "productId": "0x0045",
+
   "commands": [
     {
       "name": "printLabel",

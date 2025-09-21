@@ -1,20 +1,13 @@
-- IntelliJ IDEA project setup and configuration
-- version control set up using git. This is for this series of demos only -
-    production code will be in its own repo on the intermet account
-- Technology stack decisions implemented:
-  * JSON format chosen for device lexicon files
-  * Jackson library for JSON parsing
-  * Swing (javax.swing) for GUI framework
-  * Maven for build system and dependency management
-- Basic functionality:
-  * File picker with JSON filtering
-  * JSON parsing of lexicon files
-  * Protocol field detection and display
+- The primary thing on display here is a lot of comments explaining how the
+    newly added functionality works.
+- New functionality:
+    * Program now gets all of the device-agnostic fields from the lexicon file
+        and displays them to the GUI.
 
-- To run: java -jar MyceliumHub-Phase1.jar
+- To run: java -jar MyceliumHub-Phase2.jar
 
 - Test 0: Use "Select lexicon file" button to select "sample-lexicon.json"
-    - "Device information" pane should display the string "Protocol: USB"
+    - "Device information" pane should display all five attributes.
 - Test 1: Select "broken-sample-lexicon.json"
-    - You should get a non-fatal dialog box indicating an inability to find the
-        "protocol" field.
+    - You should see four of the five fields populated, but 'description' is
+        left as '--' because the entire node is missing from the lexicon file.
