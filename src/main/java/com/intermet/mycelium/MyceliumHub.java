@@ -18,6 +18,7 @@ public class MyceliumHub extends JFrame {
     private JPanel deviceInfoPanel;
     private JPanel commandsPanel;
     private JButton selectLexiconButton;
+    private JButton connectButton;
     private ObjectMapper objectMapper;
 
     private JLabel deviceNameValue;
@@ -25,10 +26,12 @@ public class MyceliumHub extends JFrame {
     private JLabel vendorIdValue;
     private JLabel productIdValue;
     private JLabel descriptionValue;
+    private JLabel connectionStatusLabel;
 
     private JsonNode currentLexicon;
     private CommandPanel activeCommandPanel;
     private Map<String, CommandPanel> commandPanelCache;
+    private DeviceCommunicator deviceCommunicator;
 
     /* This is the dropdown widget used for displaying any number of commands,
     * and selecting one */
@@ -38,6 +41,7 @@ public class MyceliumHub extends JFrame {
         initializeGUI();
         objectMapper = new ObjectMapper();
         commandPanelCache = new HashMap<String, CommandPanel>();
+        deviceCommunicator = new DeviceCommunicator();
     }
 
     private void initializeGUI() {
@@ -55,10 +59,10 @@ public class MyceliumHub extends JFrame {
         mainPanel.setBorder(BorderFactory.createEmptyBorder
                 (10, 10, 10, 10));
 
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
         selectLexiconButton = new JButton("Select Lexicon File");
-        /* We haven't yet added this button to anything, but we can still
-        * set its alignment. */
-        selectLexiconButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         /* Here we pass a function as an argument, analogous to a function
         * pointer in C. Swing has an event system running behind the scenes, and
         * what we are doing here is adding onSelectLexiconFile as a listener for
@@ -67,7 +71,19 @@ public class MyceliumHub extends JFrame {
         * underlying event type of Swing's event system. */
         selectLexiconButton.addActionListener(this::onSelectLexiconFile);
         /* Now we add the button to the main panel. */
-        mainPanel.add(selectLexiconButton);
+        topPanel.add(selectLexiconButton);
+
+        connectButton = new JButton("Connect");
+        connectButton.setEnabled(false);
+        connectButton.addActionListener(this::onConnectToggle);
+        topPanel.add(connectButton);
+
+        connectionStatusLabel = new JLabel();
+        connectionStatusLabel.setForeground(Color.GRAY);
+        topPanel.add(connectionStatusLabel);
+
+        mainPanel.add(topPanel);
+
         /* And space it out a little. Struts are invisible widgets that do
         * nothing but push widgets apart, i.e., a spacer. */
         mainPanel.add(Box.createVerticalStrut(20));
@@ -121,6 +137,38 @@ public class MyceliumHub extends JFrame {
         * You don't have to call this, and if you don't, our program window will
         * start at 0, 0 screen space, i.e., the top left. */
         setLocationRelativeTo(null);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (deviceCommunicator != null && deviceCommunicator.isConnected()) {
+                deviceCommunicator.disconnect();
+            }
+        }));
+    }
+
+    private void onConnectToggle(ActionEvent e) {
+        if (deviceCommunicator.isConnected()) {
+            deviceCommunicator.disconnect();
+            connectButton.setText("Connect");
+            connectionStatusLabel.setText("Disconnected");
+            connectionStatusLabel.setForeground(Color.GRAY);
+            commandDropdown.setEnabled(false);
+        } else {
+            boolean connected = deviceCommunicator.connect();
+            if (connected) {
+                connectButton.setText("Disconnect");
+                connectionStatusLabel.setText("Connected");
+                connectionStatusLabel.setForeground(new Color(22, 117, 11));
+                commandDropdown.setEnabled(true);
+            } else {
+                connectionStatusLabel.setText("Connection failed");
+                connectionStatusLabel.setForeground(Color.RED);
+                JOptionPane.showMessageDialog(
+                        this, "Failed to connect to device.\n" +
+                                "Please ensure the device is connected and powered on\n",
+                        "Connection Error", JOptionPane.ERROR_MESSAGE
+                );
+            }
+        }
     }
 
     private void onSelectLexiconFile(ActionEvent e) {
@@ -157,11 +205,20 @@ public class MyceliumHub extends JFrame {
 
     private void parseLexiconFile(File file) {
         try {
+            if (deviceCommunicator.isConnected()) {
+                deviceCommunicator.disconnect();
+                connectButton.setText("Connect");
+                connectionStatusLabel.setText("Device loaded, not connected");
+                connectionStatusLabel.setForeground(Color.GRAY);
+            }
+
             /* Dump the file to a string */
             String content = Files.readString(file.toPath());
             /* interpret it as a JSON object */
             JsonNode root = objectMapper.readTree(content);
             currentLexicon = root;
+
+            deviceCommunicator.setLexicon(root);
 
             /* This function takes a JPanel, the JSON object, and a string.
             * It finds the JSON node of the same name as the string argument,
@@ -176,8 +233,18 @@ public class MyceliumHub extends JFrame {
             * something if we found that the protocol was "USB". In a future
             * demo, we'll check the found protocol against an array of supported
             * protocols, and open communication accordingly. */
-            if (root.has("protocol") && "USB".equalsIgnoreCase(root.get("protocol").asText())) {
-                System.out.println("USB protocol detected - ready for device communication");
+            if (root.has("protocol")) {
+                String protocol = root.get("protocol").asText();
+                if ("USB".equalsIgnoreCase(protocol)) {
+                    connectButton.setEnabled(true);
+                    connectionStatusLabel.setText("Ready to connect");
+                    System.out.println("USB protocol detected - ready for device communication");
+                } else {
+                    connectButton.setEnabled(false);
+                    connectionStatusLabel.setText("Protocol [" + protocol +
+                            "] not yet supported");
+                    connectionStatusLabel.setForeground(Color.ORANGE);
+                }
             }
 
             if (root.has("commands")) {
@@ -195,7 +262,7 @@ public class MyceliumHub extends JFrame {
                     }
 
                     /* We need to enable the dropdown widget */
-                    commandDropdown.setEnabled(true);
+                    commandDropdown.setEnabled(false);
                     System.out.println("Loaded " + (commandDropdown.getItemCount() - 1) + " commands");
                 } else {
                     commandDropdown.setEnabled(false);
@@ -242,6 +309,8 @@ public class MyceliumHub extends JFrame {
             reference */
             activeCommandPanel = commandPanelCache.get(selectedCommand);
 
+            deviceCommunicator.setActivePanel(activeCommandPanel);
+
             if (activeCommandPanel != null) {
                 updateCommandsDisplay();
             }
@@ -267,10 +336,10 @@ public class MyceliumHub extends JFrame {
                 /* Only handle the type of command which has no params or return
                  */
                 if (!hasParameters && !hasResponse) {
-                    return new SimpleCommandPanel(command);
+                    return new SimpleCommandPanel(command, deviceCommunicator);
                 } else {
                     System.out.println("Command type not yet implemented, using SimpleCommandPanel");
-                    return new SimpleCommandPanel(command);
+                    return new SimpleCommandPanel(command, deviceCommunicator);
                 }
             }
         }

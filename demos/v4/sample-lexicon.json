@@ -2,7 +2,7 @@
   "deviceName": "Dymo LabelWriter 450",
   "protocol": "USB",
   "vendorId": "0x0922",
-  "productId": "0x001d",
+  "productId": "0x0020",
   "description": "Label printer for standard address labels",
   "commands": [
     {

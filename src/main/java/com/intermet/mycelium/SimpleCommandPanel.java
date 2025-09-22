@@ -14,12 +14,13 @@ public class SimpleCommandPanel implements CommandPanel {
     private String description;
     private DeviceCommunicator communicator;
 
-    public SimpleCommandPanel(JsonNode commandDefinition) {
+    public SimpleCommandPanel(JsonNode commandDefinition, DeviceCommunicator communicator) {
         /* set name and description */
         this.commandName = commandDefinition.get("name").asText();
         this.description = commandDefinition.has("description")
                 ? commandDefinition.get("description").asText()
                 : "No description available";
+        this.communicator = communicator;
 
         initializePanel();
     }
@@ -55,18 +56,32 @@ public class SimpleCommandPanel implements CommandPanel {
     }
 
     private void onSendCommand() {
-        statusLabel.setText("Command sent at " +
-                java.time.LocalTime.now().format(
-                        java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        if (communicator != null && communicator.isConnected()) {
+            statusLabel.setText("Sending command...");
+            statusLabel.setForeground(Color.BLUE);
 
-        if (communicator != null) {
-            communicator.sendCommand(commandName);
+            // Send the command in a separate thread to avoid blocking the GUI
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    communicator.sendCommand(commandName);
+                    statusLabel.setText("Command sent at " +
+                            java.time.LocalTime.now().format(
+                                    java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+                    statusLabel.setForeground(new Color(0, 128, 0));  // Dark green
+                } catch (Exception ex) {
+                    statusLabel.setText("Error: " + ex.getMessage());
+                    statusLabel.setForeground(Color.RED);
+                }
+            });
+        } else if (communicator == null) {
+            statusLabel.setText("Error: No communicator set");
+            statusLabel.setForeground(Color.RED);
+            System.err.println("Communicator not set");
         } else {
-            System.out.println("Communicator not set");
+            statusLabel.setText("Error: Not connected to device");
+            statusLabel.setForeground(Color.RED);
+            System.err.println("Not connected to device");
         }
-
-        /* This is where we will interact with the communication layer to
-        * actually send the command, but for now just print something. */
     }
 
     @Override
@@ -76,11 +91,14 @@ public class SimpleCommandPanel implements CommandPanel {
 
     @Override
     public void updateResponse(byte[] data) {
-        /* We do not expect a reply after sending this type of command, so just
-        print to console for now, but probably just pass. */
+        // SimpleCommand doesn't expect responses, but log if we get one
         if (data != null && data.length > 0) {
             System.out.println("Unexpected response for " + commandName + ": " +
-                    java.util.Arrays.toString(data));
+                    bytesToHex(data));
+            SwingUtilities.invokeLater(() -> {
+                statusLabel.setText("Received unexpected response");
+                statusLabel.setForeground(Color.ORANGE);
+            });
         }
     }
 
@@ -101,5 +119,13 @@ public class SimpleCommandPanel implements CommandPanel {
     @Override
     public String getCommandName() {
         return commandName;
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X ", b));
+        }
+        return sb.toString().trim();
     }
 }
