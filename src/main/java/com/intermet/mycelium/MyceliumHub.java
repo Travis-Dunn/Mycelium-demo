@@ -230,7 +230,7 @@ public class MyceliumHub extends JFrame {
         String selectedCommand = (String) commandDropdown.getSelectedItem();
         if (selectedCommand != null && !selectedCommand.equals("-- Select Command --")) {
             System.out.println("Selected command: " + selectedCommand);
-            /* In v3, we will do something here */
+            /* lazy init the CommandPanel */
             if (!commandPanelCache.containsKey(selectedCommand)) {
                 CommandPanel newPanel = createPanelForCommand(selectedCommand);
                 if (newPanel != null) {
@@ -238,11 +238,11 @@ public class MyceliumHub extends JFrame {
                 }
             }
 
-            // Get the panel from cache and set as active
+            /* Get the CommandPanel from the hashmap, assign it to the active
+            reference */
             activeCommandPanel = commandPanelCache.get(selectedCommand);
 
             if (activeCommandPanel != null) {
-                // Update the GUI to show this command's panel
                 updateCommandsDisplay();
             }
         }
@@ -253,21 +253,22 @@ public class MyceliumHub extends JFrame {
             return null;
         }
 
-        // Find the command definition in the lexicon
+        /* We don't parse the lexicon file into a class or anything, just leave
+        it as a Json node */
         JsonNode commandsArray = currentLexicon.get("commands");
         for (JsonNode command : commandsArray) {
             if (command.has("name") && command.get("name").asText().equals(commandName)) {
-                // Determine command type and create the appropriate panel
+                /* Determine type based on the presence of parameters and return
+                type */
                 boolean hasParameters = command.has("parameters") &&
                         command.get("parameters").size() > 0;
                 boolean hasResponse = command.has("responseType");
 
-                // For now, we only implement SimpleCommandPanel
-                // In the future, we'll add logic to create different panel types
+                /* Only handle the type of command which has no params or return
+                 */
                 if (!hasParameters && !hasResponse) {
                     return new SimpleCommandPanel(command);
                 } else {
-                    // Placeholder: use SimpleCommandPanel for all types for now
                     System.out.println("Command type not yet implemented, using SimpleCommandPanel");
                     return new SimpleCommandPanel(command);
                 }

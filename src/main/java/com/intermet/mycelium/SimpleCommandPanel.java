@@ -12,6 +12,7 @@ public class SimpleCommandPanel implements CommandPanel {
     private JLabel statusLabel;
     private String commandName;
     private String description;
+    private DeviceCommunicator communicator;
 
     public SimpleCommandPanel(JsonNode commandDefinition) {
         /* set name and description */
@@ -23,25 +24,30 @@ public class SimpleCommandPanel implements CommandPanel {
         initializePanel();
     }
 
+    public void setCommunicator(DeviceCommunicator communicator) {
+        this.communicator = communicator;
+    }
+
     private void initializePanel() {
         panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Command description
+        /* description */
         JLabel descLabel = new JLabel(description);
         descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(descLabel);
         panel.add(Box.createVerticalStrut(10));
 
-        // Send button
+        /* button */
         sendButton = new JButton("Send " + commandName);
         sendButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         sendButton.addActionListener(e -> onSendCommand());
         panel.add(sendButton);
         panel.add(Box.createVerticalStrut(10));
 
-        // Status label (shows when command was sent)
+        /* only used for showing a non-interactive timestamp, when the button is
+        actuated */
         statusLabel = new JLabel(" ");
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         statusLabel.setForeground(Color.GRAY);
@@ -53,9 +59,14 @@ public class SimpleCommandPanel implements CommandPanel {
                 java.time.LocalTime.now().format(
                         java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
 
+        if (communicator != null) {
+            communicator.sendCommand(commandName);
+        } else {
+            System.out.println("Communicator not set");
+        }
+
         /* This is where we will interact with the communication layer to
         * actually send the command, but for now just print something. */
-        System.out.println("Sending command: " + commandName);
     }
 
     @Override
