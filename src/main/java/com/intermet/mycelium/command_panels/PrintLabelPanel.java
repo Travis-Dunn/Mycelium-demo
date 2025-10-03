@@ -52,6 +52,17 @@ public class PrintLabelPanel implements CommandPanel {
         panel.add(printButton);
         panel.add(Box.createVerticalStrut(10));
 
+        JButton testButton = new JButton("Save Test Image");
+        testButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        testButton.addActionListener(e -> {
+            String text = textInput.getText().trim();
+            if (text.isEmpty()) text = "Test Label";
+            LabelRenderer.saveTestImage(text, 2.0, "test_label.png");
+            statusLabel.setText("Test image saved to test_label.png");
+            statusLabel.setForeground(Color.BLUE);
+        });
+        panel.add(testButton);
+
         statusLabel = new JLabel(" ");
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         statusLabel.setForeground(Color.GRAY);
