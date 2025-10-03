@@ -25,8 +25,7 @@ public class DeviceCommunicator {
     private short vendorId;
     private short productId;
 
-    public DeviceCommunicator() {
-    }
+    public DeviceCommunicator() {}
 
     public void setLexicon(JsonNode lexicon) {
         currentLexicon = lexicon;

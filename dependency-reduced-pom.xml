@@ -21,7 +21,7 @@
                   <mainClass>com.intermet.mycelium.MyceliumHub</mainClass>
                 </transformer>
               </transformers>
-              <finalName>MyceliumHub-Phase4</finalName>
+              <finalName>MyceliumHub-Phase6</finalName>
             </configuration>
           </execution>
         </executions>

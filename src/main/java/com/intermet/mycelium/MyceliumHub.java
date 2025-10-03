@@ -12,6 +12,8 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intermet.mycelium.command_panels.CommandPanel;
+import com.intermet.mycelium.command_panels.SimpleCommandPanel;
+import com.intermet.mycelium.command_panels.PrintLabelPanel;
 
 public class MyceliumHub extends JFrame {
     private JPanel mainPanel;
@@ -337,6 +339,10 @@ public class MyceliumHub extends JFrame {
                  */
                 if (!hasParameters && !hasResponse) {
                     return new SimpleCommandPanel(command, deviceCommunicator);
+                } else if (hasParameters && !hasResponse) {
+                    if (command.has("name") && command.get("name").asText().equals("printText")) {
+                        return new PrintLabelPanel(command, deviceCommunicator);
+                    }
                 } else {
                     System.out.println("Command type not yet implemented, using SimpleCommandPanel");
                     return new SimpleCommandPanel(command, deviceCommunicator);

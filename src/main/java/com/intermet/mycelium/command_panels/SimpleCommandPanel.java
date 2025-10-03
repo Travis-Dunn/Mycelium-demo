@@ -1,7 +1,7 @@
-package com.intermet.mycelium;
+package com.intermet.mycelium.command_panels;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.intermet.mycelium.command_panels.CommandPanel;
+import com.intermet.mycelium.DeviceCommunicator;
 
 import javax.swing.*;
 import java.awt.*;
