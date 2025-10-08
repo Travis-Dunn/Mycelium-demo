@@ -4,6 +4,7 @@ import com.intermet.mycelium.DeviceCommunicator;
 import com.fasterxml.jackson.databind.JsonNode;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 
 public class PrintLabelPanel implements CommandPanel {
     private JPanel panel;
@@ -84,7 +85,6 @@ public class PrintLabelPanel implements CommandPanel {
 
             SwingUtilities.invokeLater(() -> {
                 try {
-                    /* TODO: font rendering */
                     communicator.sendCommand(commandName);
                     statusLabel.setText("Label printed at " +
                             java.time.LocalTime.now().format(
@@ -111,8 +111,10 @@ public class PrintLabelPanel implements CommandPanel {
 
     @Override
     public byte[] getCommandData() {
-
-        return new byte[0];
+        String text = textInput.getText().trim();
+        BufferedImage image = LabelRenderer.renderTextToImage(text, 2.0);
+        byte[][] rasterLines = LabelRenderer.imageToRasterLines(image);
+        return LabelRenderer.buildPrintJob(rasterLines, 2.0);
     }
 
     @Override

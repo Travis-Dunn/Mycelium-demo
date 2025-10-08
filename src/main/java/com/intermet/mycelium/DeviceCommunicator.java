@@ -264,6 +264,17 @@ public class DeviceCommunicator {
             return;
         }
 
+        // Special handling for print functionality
+        if ("printText".equals(commandName)) {
+            if (activePanel != null) {
+                byte[] printJobData = activePanel.getCommandData();
+                sendRawData(printJobData);
+            } else {
+                System.err.println("No active panel for printText command");
+            }
+            return;
+        }
+
         JsonNode command = findCommand(commandName);
         if (command == null) {
             System.err.println("Command not found: " + commandName);
@@ -350,6 +361,53 @@ public class DeviceCommunicator {
             System.out.println("Protocol " + protocol + " not yet implemented");
         } else {
             System.err.println("No output endpoint available");
+        }
+    }
+
+    /**
+     * Sends raw data to the printer without looking up commands in lexicon
+     * @param data Complete byte array to send
+     * @return true if successful, false otherwise
+     */
+    public boolean sendRawData(byte[] data) {
+        if (!isConnected) {
+            System.err.println("Not connected");
+            return false;
+        }
+
+        if (!"USB".equalsIgnoreCase(protocol)) {
+            System.err.println("Protocol " + protocol + " not yet implemented");
+            return false;
+        }
+
+        if (outEndpoint == -1) {
+            System.err.println("No output endpoint available");
+            return false;
+        }
+
+        try {
+            System.out.println("Sending " + data.length + " bytes to device");
+
+            ByteBuffer buffer = ByteBuffer.allocateDirect(data.length);
+            buffer.put(data);
+            buffer.rewind();
+
+            IntBuffer transferred = IntBuffer.allocate(1);
+            int result = LibUsb.bulkTransfer(deviceHandle, outEndpoint, buffer,
+                    transferred, 10000);  // 10 second timeout for print jobs
+
+            if (result == LibUsb.SUCCESS) {
+                System.out.println("Sent " + transferred.get(0) + " bytes successfully");
+                return true;
+            } else {
+                System.err.println("Failed to send data: " + LibUsb.errorName(result));
+                return false;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Failed to send raw data: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
