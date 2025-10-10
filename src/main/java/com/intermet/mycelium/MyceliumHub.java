@@ -5,6 +5,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +15,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intermet.mycelium.command_panels.CommandPanel;
 import com.intermet.mycelium.command_panels.SimpleCommandPanel;
-import com.intermet.mycelium.command_panels.PrintLabelPanel;
 
 public class MyceliumHub extends JFrame {
     private JPanel mainPanel;
@@ -35,6 +36,8 @@ public class MyceliumHub extends JFrame {
     private Map<String, CommandPanel> commandPanelCache;
     private DeviceCommunicator deviceCommunicator;
 
+    private Map<String, URLClassLoader> pluginLoaders; // Track loaded plugins
+
     /* This is the dropdown widget used for displaying any number of commands,
     * and selecting one */
     private JComboBox<String> commandDropdown;
@@ -44,6 +47,7 @@ public class MyceliumHub extends JFrame {
         objectMapper = new ObjectMapper();
         commandPanelCache = new HashMap<String, CommandPanel>();
         deviceCommunicator = new DeviceCommunicator();
+        pluginLoaders = new HashMap<>();
     }
 
     private void initializeGUI() {
@@ -220,6 +224,16 @@ public class MyceliumHub extends JFrame {
             JsonNode root = objectMapper.readTree(content);
             currentLexicon = root;
 
+            // NEW: Load plugin if specified
+            if (root.has("pluginJar")) {
+                String jarFileName = root.get("pluginJar").asText();
+                URLClassLoader pluginLoader = loadPlugin(file.getAbsolutePath(), jarFileName);
+                if (pluginLoader != null) {
+                    pluginLoaders.put(file.getName(), pluginLoader);
+                    System.out.println("Plugin loaded successfully");
+                }
+            }
+
             deviceCommunicator.setLexicon(root);
 
             /* This function takes a JPanel, the JSON object, and a string.
@@ -301,7 +315,7 @@ public class MyceliumHub extends JFrame {
             System.out.println("Selected command: " + selectedCommand);
             /* lazy init the CommandPanel */
             if (!commandPanelCache.containsKey(selectedCommand)) {
-                CommandPanel newPanel = createPanelForCommand(selectedCommand);
+                CommandPanel newPanel = createPanelForCommand1(selectedCommand);
                 if (newPanel != null) {
                     commandPanelCache.put(selectedCommand, newPanel);
                 }
@@ -341,7 +355,16 @@ public class MyceliumHub extends JFrame {
                     return new SimpleCommandPanel(command, deviceCommunicator);
                 } else if (hasParameters && !hasResponse) {
                     if (command.has("name") && command.get("name").asText().equals("printText")) {
-                        return new PrintLabelPanel(command, deviceCommunicator);
+                        try {
+                            Class<?> printLabelPanelClass = Class.forName(
+                                    "com.intermet.mycelium.plugins.labelwriter.PrintLabelPanel");
+                            return (CommandPanel)printLabelPanelClass.getConstructor(
+                                    JsonNode.class, DeviceCommunicator.class).
+                                    newInstance(command, deviceCommunicator);
+                        } catch (Exception e) {
+                            System.err.println("Failed to load class dynamically");
+                            e.printStackTrace();
+                        }
                     }
                 } else {
                     System.out.println("Command type not yet implemented, using SimpleCommandPanel");
@@ -350,6 +373,50 @@ public class MyceliumHub extends JFrame {
             }
         }
 
+        return null;
+    }
+
+    private CommandPanel createPanelForCommand1(String commandName) {
+        if (currentLexicon == null || !currentLexicon.has("commands")) {
+            return null;
+        }
+
+        JsonNode commandsArray = currentLexicon.get("commands");
+        for (JsonNode command : commandsArray) {
+            if (command.has("name") && command.get("name").asText().equals(commandName)) {
+
+                // Check if command specifies a custom panel class
+                if (command.has("panelClass")) {
+                    String className = command.get("panelClass").asText();
+                    try {
+                        // Get the plugin loader for this lexicon
+                        URLClassLoader pluginLoader = pluginLoaders.values().stream()
+                                .findFirst()
+                                .orElse(null);
+
+                        Class<?> panelClass;
+                        if (pluginLoader != null) {
+                            // Load from plugin
+                            panelClass = pluginLoader.loadClass(className);
+                        } else {
+                            // Try loading from main classpath (fallback)
+                            panelClass = Class.forName(className);
+                        }
+
+                        return (CommandPanel) panelClass
+                                .getConstructor(JsonNode.class, DeviceCommunicator.class)
+                                .newInstance(command, deviceCommunicator);
+
+                    } catch (Exception e) {
+                        System.err.println("Failed to load panel class: " + className);
+                        e.printStackTrace();
+                    }
+                }
+
+                // Default to SimpleCommandPanel
+                return new SimpleCommandPanel(command, deviceCommunicator);
+            }
+        }
         return null;
     }
 
@@ -477,5 +544,36 @@ public class MyceliumHub extends JFrame {
         label.setMinimumSize(new Dimension(200, 20));
         label.setPreferredSize(new Dimension(200, 20));
         return label;
+    }
+
+    private URLClassLoader loadPlugin(String lexiconPath, String jarFileName) {
+        try {
+            // Get directory containing the lexicon file
+            File lexiconFile = new File(lexiconPath);
+            File deviceDir = lexiconFile.getParentFile();
+
+            // Construct path to plugin JAR
+            File jarFile = new File(deviceDir, jarFileName);
+
+            if (!jarFile.exists()) {
+                System.err.println("Plugin JAR not found: " + jarFile.getAbsolutePath());
+                return null;
+            }
+
+            System.out.println("Loading plugin from: " + jarFile.getAbsolutePath());
+
+            // Create URLClassLoader for this plugin
+            URLClassLoader loader = new URLClassLoader(
+                    new URL[]{jarFile.toURI().toURL()},
+                    this.getClass().getClassLoader()
+            );
+
+            return loader;
+
+        } catch (Exception e) {
+            System.err.println("Failed to load plugin: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 }
