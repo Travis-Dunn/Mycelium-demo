@@ -3,10 +3,13 @@ package com.intermet.mycelium;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.intermet.mycelium.command_panels.CommandPanel;
 
+import jssc.SerialPort;
+import jssc.SerialPortException;
 import org.usb4java.*;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +23,7 @@ public class DeviceCommunicator {
     private Context context;
     private DeviceHandle deviceHandle;
     private Device usbDevice;
+    private SerialPort serialPort;
     private byte outEndpoint = -1;  // Endpoint for sending data
     private byte inEndpoint = -1;   // Endpoint for receiving data
     private short vendorId;
@@ -138,8 +142,42 @@ public class DeviceCommunicator {
                 disconnect();  // Clean up on failure
                 return false;
             }
-        } else {
+        } else if ("USB_SERIAL".equalsIgnoreCase(protocol)) {
+            return connectSerial();
+        }else {
             System.out.println("Non-USB protocols not yet implemented");
+            return false;
+        }
+    }
+
+    private boolean connectSerial() {
+        try {
+            // FTDI devices show up as /dev/ttyUSB* on Linux, COM* on Windows
+            String portName = currentLexicon.has("serialPort")
+                    ? currentLexicon.get("serialPort").asText()
+                    : null;
+
+            if (portName == null) {
+                System.err.println("No serial port specified in lexicon");
+                return false;
+            }
+            System.out.println("Connecting to serial port: " + portName);
+
+            serialPort = new SerialPort(portName);
+            serialPort.openPort();
+
+            // Configure from lexicon
+            serialPort.setParams(
+                    57600,  // from serialConfig.baudRate
+                    SerialPort.DATABITS_8,
+                    SerialPort.STOPBITS_1,
+                    SerialPort.PARITY_NONE
+            );
+
+            isConnected = true;
+            return true;
+        } catch (SerialPortException e) {
+            System.err.println("Failed to open serial port: " + e.getMessage());
             return false;
         }
     }
@@ -273,6 +311,23 @@ public class DeviceCommunicator {
                 System.err.println("No active panel for printText command");
             }
             return;
+        }
+        if ("getSerialNumber".equals(commandName)) {
+            if (activePanel != null) {
+                try {
+                    serialPort.writeString("/SRN?\r\n");
+                    Thread.sleep(100);
+                    String response = serialPort.readString();
+                    activePanel.updateResponse(response.getBytes(StandardCharsets.US_ASCII));
+                } catch (Exception ignored) {}
+            }
+        } else if (commandName == null) {
+            if (activePanel != null) {
+                try {
+                    String response = serialPort.readString();
+                    activePanel.updateResponse(response.getBytes(StandardCharsets.US_ASCII));
+                } catch (Exception ignored) {}
+            }
         }
 
         JsonNode command = findCommand(commandName);

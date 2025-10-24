@@ -255,6 +255,10 @@ public class MyceliumHub extends JFrame {
                     connectButton.setEnabled(true);
                     connectionStatusLabel.setText("Ready to connect");
                     System.out.println("USB protocol detected - ready for device communication");
+                } else if ("USB_SERIAL".equalsIgnoreCase(protocol)) {
+                    connectButton.setEnabled(true);
+                    connectionStatusLabel.setText("Ready to connect");
+                    System.out.println("USB_SERIAL protocol detected - ready for device communication");
                 } else {
                     connectButton.setEnabled(false);
                     connectionStatusLabel.setText("Protocol [" + protocol +
@@ -360,6 +364,19 @@ public class MyceliumHub extends JFrame {
                                     "com.intermet.mycelium.plugins.labelwriter.PrintLabelPanel");
                             return (CommandPanel)printLabelPanelClass.getConstructor(
                                     JsonNode.class, DeviceCommunicator.class).
+                                    newInstance(command, deviceCommunicator);
+                        } catch (Exception e) {
+                            System.err.println("Failed to load class dynamically");
+                            e.printStackTrace();
+                        }
+                    }
+                } else if (!hasParameters && hasResponse) {
+                    if (command.has("name") && command.get("name").asText().equals("getSerialNumber")) {
+                        try {
+                            Class<?> printLabelPanelClass = Class.forName(
+                                    "com.intermet.mycelium.plugins.XQ2.SerialNumberPanel");
+                            return (CommandPanel)printLabelPanelClass.getConstructor(
+                                            JsonNode.class, DeviceCommunicator.class).
                                     newInstance(command, deviceCommunicator);
                         } catch (Exception e) {
                             System.err.println("Failed to load class dynamically");
