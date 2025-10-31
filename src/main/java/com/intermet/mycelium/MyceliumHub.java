@@ -1,6 +1,7 @@
 package com.intermet.mycelium;
 
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -78,8 +79,9 @@ public class MyceliumHub extends JFrame {
         deviceListPanel.setAlignmentY(Component.TOP_ALIGNMENT);
 
         deviceListLabel = new JLabel();
+        deviceListLabel.setFont(deviceListLabel.getFont().deriveFont(24f));
         deviceListLabel.setForeground(new Color(224, 96, 2));
-        deviceListLabel.setText("Devices");
+        deviceListLabel.setText("Lexicons");
         deviceListPanel.add(deviceListLabel);
         deviceListPanel.add(Box.createVerticalStrut(40));
 
@@ -145,7 +147,10 @@ public class MyceliumHub extends JFrame {
         /* Set up a placeholder panel that we'll fill out in demo v2 */
         commandsPanel = new JPanel();
         commandsPanel.setLayout(new BoxLayout(commandsPanel, BoxLayout.Y_AXIS));
-        commandsPanel.setBorder(BorderFactory.createTitledBorder("Device Commands"));
+        TitledBorder border = BorderFactory.createTitledBorder("Device panel");
+        border.setTitleFont(border.getTitleFont().deriveFont(16f));
+
+        commandsPanel.setBorder(border);
 
         /* Create a JPanel to hold the dropdown widget we declared earlier.
         * Because this is only going to hold one thing, we just make it a local
@@ -613,9 +618,9 @@ public class MyceliumHub extends JFrame {
         /* Note that we use GridBagLayout here rather than BoxLayout, because
         * it's a lot more configurable. */
         deviceInfoPanel.setLayout(new GridBagLayout());
-        deviceInfoPanel.setBorder(BorderFactory.createTitledBorder(
-                "Device agnostic fields"
-        ));
+        TitledBorder border = BorderFactory.createTitledBorder("Device agnostic fields");
+        border.setTitleFont(border.getTitleFont().deriveFont(16f)); // 16pt size
+        deviceInfoPanel.setBorder(border);
 
         /* This object is kind of like a "properties struct". You manipulate
         * this and connect it to the object that is using GridBagLayout. */
