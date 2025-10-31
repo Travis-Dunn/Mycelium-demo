@@ -1,0 +1,60 @@
+{
+  "deviceName": "Dymo LabelWriter 450",
+  "protocol": "USB",
+  "vendorId": "0x0922",
+  "productId": "0x0020",
+  "pluginJar": "labelwriter-plugin-1.0.0.jar",
+  "description": "Label printer for standard address labels",
+  "commands": [
+    {
+      "name": "getStatus",
+      "dataType": "uint8",
+      "interface": ["query"],
+      "description": "Query printer status",
+      "responseType": "uint8",
+      "responseDescription": "Status byte: 0x00=ready, 0x01=busy, 0x02=error"
+    },
+    {
+      "name": "formFeed",
+      "dataType": "none",
+      "commandCode": "0x1B45",
+      "interface": ["command"],
+      "description": "Advance to next label"
+    },
+    {
+      "name": "skipLines",
+      "dataType": "uint8",
+      "interface": ["command"],
+      "description": "Skip n lines forward",
+      "parameters": [
+        {
+          "name": "lineCount",
+          "type": "uint8",
+          "description": "Number of lines to skip (1-255)"
+        }
+      ]
+    },
+    {
+      "name": "printText",
+      "panelClass": "com.intermet.mycelium.plugins.labelwriter.PrintLabelPanel",
+      "dataType": "string",
+      "interface": ["command"],
+      "description": "Print text string",
+      "parameters": [
+        {
+          "name": "text",
+          "type": "string",
+          "description": "Text to print on label"
+        }
+      ]
+    },
+    {
+      "name": "getResolution",
+      "dataType": "none",
+      "interface": ["query"],
+      "description": "Get printer resolution",
+      "responseType": "uint16",
+      "responseDescription": "DPI value"
+    }
+  ]
+}

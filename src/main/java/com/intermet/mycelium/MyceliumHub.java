@@ -8,15 +8,18 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intermet.mycelium.command_panels.CommandPanel;
 import com.intermet.mycelium.command_panels.SimpleCommandPanel;
+import jssc.SerialPortList;
 
 public class MyceliumHub extends JFrame {
+    private JPanel rootPanel;
+    private JPanel deviceListPanel;
     private JPanel mainPanel;
     private JPanel deviceInfoPanel;
     private JPanel commandsPanel;
@@ -24,6 +27,11 @@ public class MyceliumHub extends JFrame {
     private JButton connectButton;
     private ObjectMapper objectMapper;
 
+    private javax.swing.Timer deviceListRefreshTimer;
+    private List<File> currentLexiconFiles = new ArrayList<>();
+    private JButton selectedDeviceButton = null;
+
+    private JLabel deviceListLabel;
     private JLabel deviceNameValue;
     private JLabel protocolValue;
     private JLabel vendorIdValue;
@@ -41,9 +49,16 @@ public class MyceliumHub extends JFrame {
     /* This is the dropdown widget used for displaying any number of commands,
     * and selecting one */
     private JComboBox<String> commandDropdown;
+    private JComboBox<String> serialPortSelector;
+    private boolean usingSerial = false;
 
     public MyceliumHub() {
         initializeGUI();
+
+        deviceListRefreshTimer = new javax.swing.Timer(200, e ->
+                refreshDeviceList());
+        deviceListRefreshTimer.start();
+
         objectMapper = new ObjectMapper();
         commandPanelCache = new HashMap<String, CommandPanel>();
         deviceCommunicator = new DeviceCommunicator();
@@ -55,15 +70,35 @@ public class MyceliumHub extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
+        rootPanel = new JPanel();
+        rootPanel.setLayout(new BoxLayout(rootPanel, BoxLayout.X_AXIS));
+
+        deviceListPanel = new JPanel();
+        deviceListPanel.setLayout(new BoxLayout(deviceListPanel, BoxLayout.Y_AXIS));
+        deviceListPanel.setAlignmentY(Component.TOP_ALIGNMENT);
+
+        deviceListLabel = new JLabel();
+        deviceListLabel.setForeground(new Color(224, 96, 2));
+        deviceListLabel.setText("Devices");
+        deviceListPanel.add(deviceListLabel);
+        deviceListPanel.add(Box.createVerticalStrut(40));
+
+        deviceListPanel.setBorder(BorderFactory.createEmptyBorder
+                (10, 10, 10, 10));
+        rootPanel.add(deviceListPanel);
+        rootPanel.add(Box.createHorizontalStrut(20));
+
         /* Panels have a nested structure - the main panel has children.
         * This one is using "BoxLayout", which stacks children.
         * In this case since we passed "BoxLayout.Y_AXIS" it stacks them
         * vertically. */
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setAlignmentY(Component.TOP_ALIGNMENT);
         /* small border around the main panel, dimensions are pixels. */
         mainPanel.setBorder(BorderFactory.createEmptyBorder
                 (10, 10, 10, 10));
+        rootPanel.add(mainPanel);
 
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
@@ -77,7 +112,10 @@ public class MyceliumHub extends JFrame {
         * underlying event type of Swing's event system. */
         selectLexiconButton.addActionListener(this::onSelectLexiconFile);
         /* Now we add the button to the main panel. */
+        /* TODO: no longer using this */
+        /*
         topPanel.add(selectLexiconButton);
+         */
 
         connectButton = new JButton("Connect");
         connectButton.setEnabled(false);
@@ -87,6 +125,10 @@ public class MyceliumHub extends JFrame {
         connectionStatusLabel = new JLabel();
         connectionStatusLabel.setForeground(Color.GRAY);
         topPanel.add(connectionStatusLabel);
+
+        serialPortSelector = new JComboBox<>();
+        serialPortSelector.setEnabled(usingSerial);
+        topPanel.add(serialPortSelector);
 
         mainPanel.add(topPanel);
 
@@ -134,10 +176,9 @@ public class MyceliumHub extends JFrame {
         * more screen space. Here we are putting the entire main panel in one
         * to avoid having the information being inaccessible off the edge of the
         * window. This is probably not necessary once we iron the GUI out. */
-        add(new JScrollPane(mainPanel), BorderLayout.CENTER);
+        add(new JScrollPane(rootPanel), BorderLayout.CENTER);
 
-        /* Give the window a size, although it is still resizable */
-        setSize(640, 480);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
         /* Calling this with null puts the window in the center of the screen.
         * You don't have to call this, and if you don't, our program window will
@@ -151,6 +192,68 @@ public class MyceliumHub extends JFrame {
         }));
     }
 
+    private List<File> findLexiconFiles() {
+        File rootDir = new File(".").getAbsoluteFile();  // or whatever your root directory is
+        File[] files = rootDir.listFiles((dir, name) ->
+                name.contains("lexicon.json"));
+
+        return files != null ? Arrays.asList(files) : Collections.emptyList();
+    }
+
+    private void refreshDeviceList() {
+        List<File> lexiconFiles = findLexiconFiles();
+
+
+        // Only update if the list changed
+        if (lexiconFiles.equals(currentLexiconFiles)) {
+            return;  // No changes, skip the update
+        }
+
+        currentLexiconFiles = new ArrayList<>(lexiconFiles);
+
+        // Remove old buttons (except the label)
+        Component[] components = deviceListPanel.getComponents();
+        for (Component comp : components) {
+            if (comp instanceof JButton) {
+                deviceListPanel.remove(comp);
+            }
+        }
+
+        // Add new buttons
+        for (File file : lexiconFiles) {
+            JButton deviceButton = new JButton(file.getName());
+            deviceButton.addActionListener(e -> onDeviceSelected(file));
+            deviceListPanel.add(deviceButton);
+        }
+
+        // Refresh the panel
+        deviceListPanel.revalidate();
+        deviceListPanel.repaint();
+    }
+
+    private void onDeviceSelected(File f) {
+        parseLexiconFile(f);
+        // Reset previous button's appearance
+        if (selectedDeviceButton != null) {
+            selectedDeviceButton.setBackground(null);  // or UIManager.getColor("Button.background")
+            selectedDeviceButton.setForeground(null);
+        }
+
+        // Find and highlight the new button
+        Component[] components = deviceListPanel.getComponents();
+        for (Component comp : components) {
+            if (comp instanceof JButton) {
+                JButton btn = (JButton) comp;
+                if (btn.getText().equals(f.getName())) {
+                    btn.setBackground(new Color(224, 96, 2));  // Your orange color
+                    btn.setForeground(Color.WHITE);
+                    selectedDeviceButton = btn;
+                    break;
+                }
+            }
+        }
+    }
+
     private void onConnectToggle(ActionEvent e) {
         if (deviceCommunicator.isConnected()) {
             deviceCommunicator.disconnect();
@@ -159,7 +262,7 @@ public class MyceliumHub extends JFrame {
             connectionStatusLabel.setForeground(Color.GRAY);
             commandDropdown.setEnabled(false);
         } else {
-            boolean connected = deviceCommunicator.connect();
+            boolean connected = deviceCommunicator.connect((String)serialPortSelector.getSelectedItem());
             if (connected) {
                 connectButton.setText("Disconnect");
                 connectionStatusLabel.setText("Connected");
@@ -252,20 +355,26 @@ public class MyceliumHub extends JFrame {
             if (root.has("protocol")) {
                 String protocol = root.get("protocol").asText();
                 if ("USB".equalsIgnoreCase(protocol)) {
+                    usingSerial = false;
                     connectButton.setEnabled(true);
                     connectionStatusLabel.setText("Ready to connect");
                     System.out.println("USB protocol detected - ready for device communication");
                 } else if ("USB_SERIAL".equalsIgnoreCase(protocol)) {
+                    usingSerial = true;
+                    /* make an entry widget for the serial port */
                     connectButton.setEnabled(true);
                     connectionStatusLabel.setText("Ready to connect");
                     System.out.println("USB_SERIAL protocol detected - ready for device communication");
                 } else {
+                    usingSerial = false;
                     connectButton.setEnabled(false);
                     connectionStatusLabel.setText("Protocol [" + protocol +
                             "] not yet supported");
                     connectionStatusLabel.setForeground(Color.ORANGE);
                 }
             }
+
+            refreshSerialPorts(usingSerial);
 
             if (root.has("commands")) {
                 JsonNode commandsArray = root.get("commands");
@@ -302,6 +411,26 @@ public class MyceliumHub extends JFrame {
                     "Error parsing JSON: " + ex.getMessage(),
                     "Parse Error",
                     JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refreshSerialPorts(boolean enabled) {
+        serialPortSelector.removeAllItems();
+
+        if (enabled) {
+            String portNames[] = SerialPortList.getPortNames();
+
+            if (portNames.length == 0) {
+                serialPortSelector.addItem("No serial ports available");
+                serialPortSelector.setEnabled(false);
+            } else {
+                for (String port : portNames) {
+                    serialPortSelector.addItem(port);
+                    serialPortSelector.setEnabled(true);
+                }
+            }
+        } else {
+            serialPortSelector.setEnabled(false);
         }
     }
 
@@ -570,7 +699,10 @@ public class MyceliumHub extends JFrame {
             File deviceDir = lexiconFile.getParentFile();
 
             // Construct path to plugin JAR
-            File jarFile = new File(deviceDir, jarFileName);
+            File jarFilePotentiallyBroken = new File(deviceDir, jarFileName);
+            String path = jarFilePotentiallyBroken.getAbsolutePath();
+            path = path.replace("/./", "/");
+            File jarFile = new File(path).getCanonicalFile();
 
             if (!jarFile.exists()) {
                 System.err.println("Plugin JAR not found: " + jarFile.getAbsolutePath());

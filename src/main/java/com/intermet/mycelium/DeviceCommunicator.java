@@ -42,7 +42,7 @@ public class DeviceCommunicator {
         activePanel = panel;
     }
 
-    public boolean connect() {
+    public boolean connect(String arg) {
         if (currentLexicon == null) return false;
 
         // Disconnect any existing connection first
@@ -143,14 +143,14 @@ public class DeviceCommunicator {
                 return false;
             }
         } else if ("USB_SERIAL".equalsIgnoreCase(protocol)) {
-            return connectSerial();
+            return connectSerial(arg);
         }else {
             System.out.println("Non-USB protocols not yet implemented");
             return false;
         }
     }
 
-    private boolean connectSerial() {
+    private boolean connectSerial(String portStr) {
         try {
             // FTDI devices show up as /dev/ttyUSB* on Linux, COM* on Windows
             String portName = currentLexicon.has("serialPort")
@@ -163,7 +163,8 @@ public class DeviceCommunicator {
             }
             System.out.println("Connecting to serial port: " + portName);
 
-            serialPort = new SerialPort(portName);
+            /* skip the above and get from gui instead */
+            serialPort = new SerialPort(portStr);
             serialPort.openPort();
 
             // Configure from lexicon

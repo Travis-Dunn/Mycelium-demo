@@ -1,0 +1,78 @@
+{
+  "deviceName": "iMet-XQ2 Weather Sensor",
+  "protocol": "USB_SERIAL",
+  "serialPort": "COM6",
+  "vendorId": "0x0403",
+  "productId": "0x6001",
+  "pluginJar": "labelwriter-plugin-1.0.0.jar",
+  "description": "Drone-mounted atmospheric sensor with GPS",
+  "serialConfig": {
+    "baudRate": 57600,
+    "dataBits": 8,
+    "parity": "NONE",
+    "stopBits": 1
+  },
+  "commands": [
+    {
+      "name": "startDataStream",
+      "commandCode": "/STA\r\n",
+      "description": "Start streaming sensor data (1Hz)",
+      "interface": ["action"],
+      "responseType": "text"
+    },
+    {
+      "name": "stopDataStream",
+      "commandCode": "/STP\r\n",
+      "description": "Stop data streaming",
+      "interface": ["action"]
+    },
+    {
+      "name": "readStoredData",
+      "commandCode": "/RDA\r\n",
+      "description": "Download all stored data from internal memory",
+      "interface": ["query"],
+      "responseType": "dataStream",
+      "panelClass": "com.intermet.mycelium.plugins.xq2.ReadDataPanel"
+    },
+    {
+      "name": "eraseData",
+      "commandCode": "/ERA\r\n",
+      "description": "Erase all data in internal memory",
+      "interface": ["action"],
+      "confirmRequired": true
+    },
+    {
+      "name": "getMemoryUsage",
+      "commandCode": "/MEM?\r\n",
+      "description": "Query memory usage percentage",
+      "interface": ["query"],
+      "responseType": "text"
+    },
+    {
+      "name": "getSerialNumber",
+      "commandCode": "/SRN?\r\n",
+      "description": "Query device serial number",
+      "interface": ["query"],
+      "responseType": "text",
+      "panelClass": "com.intermet.mycelium.plugins.XQ2.SerialNumberPanel"
+    },
+    {
+      "name": "setLoggingMode",
+      "commandCode": "/FMO=",
+      "description": "Set data logging mode",
+      "interface": ["configuration"],
+      "parameters": [
+        {
+          "name": "mode",
+          "type": "enum",
+          "options": [
+            {"value": "0", "label": "Save Disabled"},
+            {"value": "1", "label": "Save with Valid GPS (default)"},
+            {"value": "2", "label": "Save All Data"}
+          ]
+        }
+      ],
+      "panelClass": "com.intermet.mycelium.plugins.xq2.SetLoggingModePanel"
+    }
+  ]
+}
