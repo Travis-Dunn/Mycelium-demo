@@ -500,7 +500,7 @@ public class MyceliumHub extends JFrame {
                         }
                     }
                 } else if (!hasParameters && hasResponse) {
-                    if (command.has("name") && command.get("name").asText().equals("getSerialNumber")) {
+                    if (command.has("name") && command.get("name").asText().equals("streaming mode")) {
                         try {
                             Class<?> printLabelPanelClass = Class.forName(
                                     "com.intermet.mycelium.plugins.XQ2.SerialNumberPanel");

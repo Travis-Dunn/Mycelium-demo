@@ -313,7 +313,7 @@ public class DeviceCommunicator {
             }
             return;
         }
-        if ("getSerialNumber".equals(commandName)) {
+        if ("streaming mode".equals(commandName)) {
             if (activePanel != null) {
                 try {
                     serialPort.writeString("/SRN?\r\n");
