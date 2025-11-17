@@ -1,0 +1,25 @@
+{
+  "deviceName": "iMet-XQ2 Weather Sensor",
+  "protocol": "USB_SERIAL",
+  "serialPort": "COM6",
+  "vendorId": "0x0403",
+  "productId": "0x6001",
+  "pluginJar": "labelwriter-plugin-1.0.3.jar",
+  "description": "Drone-mounted atmospheric sensor with GPS",
+  "serialConfig": {
+    "baudRate": 57600,
+    "dataBits": 8,
+    "parity": "NONE",
+    "stopBits": 1
+  },
+  "commands": [
+    {
+      "name": "streaming mode",
+      "commandCode": "/SRN?\r\n",
+      "description": "Stream data",
+      "interface": ["query"],
+      "responseType": "text",
+      "panelClass": "com.intermet.mycelium.plugins.XQ2.SerialNumberPanel"
+    }
+  ]
+}

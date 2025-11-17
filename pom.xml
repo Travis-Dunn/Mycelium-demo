@@ -32,6 +32,11 @@
             <artifactId>jssc</artifactId>
             <version>2.9.4</version>
         </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.2.5</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -51,11 +56,39 @@
                                     <mainClass>com.intermet.mycelium.MyceliumHub</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>MyceliumHub-Phase13</finalName>
+                            <finalName>MyceliumHub-Phase14</finalName>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.panteleyev</groupId>
+                <artifactId>jpackage-maven-plugin</artifactId>
+                <version>1.6.0</version>
+
+                <configuration>
+                    <!-- REQUIRED -->
+
+                    <!-- Where your shaded JAR is located -->
+                    <input>${project.build.directory}</input>
+                    <destination>${project.build.directory}/installer</destination>
+                    <!-- The shaded JAR name (exactly as produced) -->
+                    <mainJar>MyceliumHub-Phase14.jar</mainJar>
+
+                    <mainClass>com.intermet.mycelium.MyceliumHub</mainClass>
+
+                    <!-- Optional but useful -->
+                    <name>MyceliumHub</name>
+                    <appVersion>1.0</appVersion>
+
+                    <!-- Windows installer options - MSI will be created by default on Windows -->
+                    <winMenu>true</winMenu>
+                    <winDirChooser>true</winDirChooser>
+                    <winShortcut>true</winShortcut>
+                </configuration>
+            </plugin>
+
+
         </plugins>
     </build>
 </project>

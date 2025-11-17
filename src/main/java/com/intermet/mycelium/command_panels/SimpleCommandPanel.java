@@ -2,6 +2,7 @@ package com.intermet.mycelium.command_panels;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.intermet.mycelium.DeviceCommunicator;
+import com.intermet.mycelium.MyceliumColors;
 
 import javax.swing.*;
 import java.awt.*;
@@ -58,7 +59,7 @@ public class SimpleCommandPanel implements CommandPanel {
     private void onSendCommand() {
         if (communicator != null && communicator.isConnected()) {
             statusLabel.setText("Sending command...");
-            statusLabel.setForeground(Color.BLUE);
+            statusLabel.setForeground(MyceliumColors.primary);
 
             // Send the command in a separate thread to avoid blocking the GUI
             SwingUtilities.invokeLater(() -> {
@@ -70,12 +71,12 @@ public class SimpleCommandPanel implements CommandPanel {
                     statusLabel.setForeground(new Color(0, 128, 0));  // Dark green
                 } catch (Exception ex) {
                     statusLabel.setText("Error: " + ex.getMessage());
-                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setForeground(MyceliumColors.tertiary);
                 }
             });
         } else if (communicator == null) {
             statusLabel.setText("Error: No communicator set");
-            statusLabel.setForeground(Color.RED);
+            statusLabel.setForeground(MyceliumColors.tertiary);
             System.err.println("Communicator not set");
         } else {
             statusLabel.setText("Error: Not connected to device");

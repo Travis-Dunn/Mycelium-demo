@@ -1,6 +1,7 @@
 package com.intermet.mycelium;
 
 import javax.swing.*;
+import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -14,6 +15,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.intermet.mycelium.command_panels.CommandPanel;
 import com.intermet.mycelium.command_panels.SimpleCommandPanel;
 import jssc.SerialPortList;
@@ -53,7 +55,17 @@ public class MyceliumHub extends JFrame {
     private JComboBox<String> serialPortSelector;
     private boolean usingSerial = false;
 
+
+
     public MyceliumHub() {
+        if (!MyceliumConfig.Init()) {
+            System.out.println("TODO: error handling\n Config failed init.\n");
+        }
+
+        if (!MyceliumColors.Init(MyceliumConfig.GetDarkMode(), MyceliumConfig.GetHighContrast())) {
+            System.out.println("TODO: error handling\n Colors failed init.\n");
+        }
+
         initializeGUI();
 
         deviceListRefreshTimer = new javax.swing.Timer(200, e ->
@@ -67,20 +79,22 @@ public class MyceliumHub extends JFrame {
     }
 
     private void initializeGUI() {
-        setTitle("Mycelium Device Hub");
+        setTitle("Mycelium Tech Demo");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
         rootPanel = new JPanel();
         rootPanel.setLayout(new BoxLayout(rootPanel, BoxLayout.X_AXIS));
+        rootPanel.setBackground(MyceliumColors.background);
 
         deviceListPanel = new JPanel();
         deviceListPanel.setLayout(new BoxLayout(deviceListPanel, BoxLayout.Y_AXIS));
+        deviceListPanel.setBackground(MyceliumColors.background);
         deviceListPanel.setAlignmentY(Component.TOP_ALIGNMENT);
 
         deviceListLabel = new JLabel();
-        deviceListLabel.setFont(deviceListLabel.getFont().deriveFont(24f));
-        deviceListLabel.setForeground(new Color(224, 96, 2));
+        deviceListLabel.setFont(MyceliumFonts.HEADER);
+        deviceListLabel.setForeground(MyceliumColors.foreground);
         deviceListLabel.setText("Lexicons");
         deviceListPanel.add(deviceListLabel);
         deviceListPanel.add(Box.createVerticalStrut(40));
@@ -96,6 +110,7 @@ public class MyceliumHub extends JFrame {
         * vertically. */
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(MyceliumColors.background);
         mainPanel.setAlignmentY(Component.TOP_ALIGNMENT);
         /* small border around the main panel, dimensions are pixels. */
         mainPanel.setBorder(BorderFactory.createEmptyBorder
@@ -104,6 +119,7 @@ public class MyceliumHub extends JFrame {
 
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+        topPanel.setBackground(MyceliumColors.background);
 
         selectLexiconButton = new JButton("Select Lexicon File");
         /* Here we pass a function as an argument, analogous to a function
@@ -120,16 +136,42 @@ public class MyceliumHub extends JFrame {
          */
 
         connectButton = new JButton("Connect");
+        connectButton.setFont(MyceliumFonts.HEADER);
+        connectButton.setBackground(MyceliumColors.foreground);
+        connectButton.setForeground(MyceliumColors.background);
         connectButton.setEnabled(false);
+        connectButton.setVisible(false);
         connectButton.addActionListener(this::onConnectToggle);
         topPanel.add(connectButton);
 
         connectionStatusLabel = new JLabel();
-        connectionStatusLabel.setForeground(Color.GRAY);
+        connectionStatusLabel.setFont(MyceliumFonts.SUBHEADER);
+        connectionStatusLabel.setForeground(MyceliumColors.tertiary);
         topPanel.add(connectionStatusLabel);
 
         serialPortSelector = new JComboBox<>();
+        serialPortSelector.setFont(MyceliumFonts.SUBHEADER);
+        serialPortSelector.setForeground(MyceliumColors.background);
+        serialPortSelector.setBackground(MyceliumColors.foreground);
+        serialPortSelector.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                                                          int index, boolean isSelected,
+                                                          boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (isSelected) {
+                    setBackground(MyceliumColors.foreground);
+                    setForeground(MyceliumColors.background);
+                } else {
+                    setBackground(MyceliumColors.foreground);
+                    setForeground(MyceliumColors.background);
+                }
+                return this;
+            }
+        });
         serialPortSelector.setEnabled(usingSerial);
+        serialPortSelector.setVisible(false);
+
         topPanel.add(serialPortSelector);
 
         mainPanel.add(topPanel);
@@ -147,22 +189,52 @@ public class MyceliumHub extends JFrame {
         /* Set up a placeholder panel that we'll fill out in demo v2 */
         commandsPanel = new JPanel();
         commandsPanel.setLayout(new BoxLayout(commandsPanel, BoxLayout.Y_AXIS));
-        TitledBorder border = BorderFactory.createTitledBorder("Device panel");
-        border.setTitleFont(border.getTitleFont().deriveFont(16f));
-
+        commandsPanel.setBackground(MyceliumColors.background);
+        TitledBorder border = BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(EtchedBorder.LOWERED,
+                        MyceliumColors.foreground, MyceliumColors.foregroundLight), "Device Panel"
+        );
+        border.setTitleFont(MyceliumFonts.HEADER);
+        border.setTitleColor(MyceliumColors.foreground);
         commandsPanel.setBorder(border);
 
         /* Create a JPanel to hold the dropdown widget we declared earlier.
         * Because this is only going to hold one thing, we just make it a local
         * variable, and give it FlowLayout. */
         JPanel commandSelectorPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        commandSelectorPanel.setBackground(MyceliumColors.background);
         /* Give it a label */
-        commandSelectorPanel.add(new JLabel("Select Command:"));
+        JLabel selectCommandLabel = new JLabel("Select Command:");
+        selectCommandLabel.setFont(MyceliumFonts.SUBHEADER);
+        selectCommandLabel.setForeground(MyceliumColors.foreground);
+        commandSelectorPanel.add(selectCommandLabel);
         commandDropdown = new JComboBox<>();
         /* Default to disabled - we'll enable it once a valid lexicon file has
         * been loaded */
         commandDropdown.setEnabled(false);
+        commandDropdown.setFont(MyceliumFonts.SUBHEADER);
+        commandDropdown.setForeground(MyceliumColors.background);
+        commandDropdown.setBackground(MyceliumColors.foreground);
+
+        commandDropdown.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                                                          int index, boolean isSelected,
+                                                          boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (isSelected) {
+                    setBackground(MyceliumColors.foreground);
+                    setForeground(MyceliumColors.background);
+                } else {
+                    setBackground(MyceliumColors.foreground);
+                    setForeground(MyceliumColors.background);
+                }
+                return this;
+            }
+        });
+
         commandDropdown.addActionListener(this::onCommandSelected);
+        commandDropdown.setVisible(false);
         /* Add our dropdown widget to it */
         commandSelectorPanel.add(commandDropdown);
         /* Then add it to the commandsPanel */
@@ -183,7 +255,11 @@ public class MyceliumHub extends JFrame {
         * window. This is probably not necessary once we iron the GUI out. */
         add(new JScrollPane(rootPanel), BorderLayout.CENTER);
 
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        if (MyceliumConfig.GetFullscreen()) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+        } else {
+            setSize(new Dimension(1280, 720));
+        }
 
         /* Calling this with null puts the window in the center of the screen.
         * You don't have to call this, and if you don't, our program window will
@@ -198,7 +274,7 @@ public class MyceliumHub extends JFrame {
     }
 
     private List<File> findLexiconFiles() {
-        File rootDir = new File(".").getAbsoluteFile();  // or whatever your root directory is
+        File rootDir = new File("./plugins").getAbsoluteFile();
         File[] files = rootDir.listFiles((dir, name) ->
                 name.contains("lexicon.json"));
 
@@ -227,6 +303,11 @@ public class MyceliumHub extends JFrame {
         // Add new buttons
         for (File file : lexiconFiles) {
             JButton deviceButton = new JButton(file.getName());
+
+            deviceButton.setFont(MyceliumFonts.SUBHEADER);
+            deviceButton.setBackground(MyceliumColors.foreground);
+            deviceButton.setForeground(MyceliumColors.background);
+
             deviceButton.addActionListener(e -> onDeviceSelected(file));
             deviceListPanel.add(deviceButton);
         }
@@ -240,8 +321,8 @@ public class MyceliumHub extends JFrame {
         parseLexiconFile(f);
         // Reset previous button's appearance
         if (selectedDeviceButton != null) {
-            selectedDeviceButton.setBackground(null);  // or UIManager.getColor("Button.background")
-            selectedDeviceButton.setForeground(null);
+            selectedDeviceButton.setBackground(MyceliumColors.foreground);  // or UIManager.getColor("Button.background")
+            selectedDeviceButton.setForeground(MyceliumColors.background);
         }
 
         // Find and highlight the new button
@@ -250,8 +331,8 @@ public class MyceliumHub extends JFrame {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
                 if (btn.getText().equals(f.getName())) {
-                    btn.setBackground(new Color(224, 96, 2));  // Your orange color
-                    btn.setForeground(Color.WHITE);
+                    btn.setBackground(MyceliumColors.primary);
+                    btn.setForeground(MyceliumColors.foreground);
                     selectedDeviceButton = btn;
                     break;
                 }
@@ -264,18 +345,21 @@ public class MyceliumHub extends JFrame {
             deviceCommunicator.disconnect();
             connectButton.setText("Connect");
             connectionStatusLabel.setText("Disconnected");
-            connectionStatusLabel.setForeground(Color.GRAY);
+            connectionStatusLabel.setForeground(MyceliumColors.secondary);
             commandDropdown.setEnabled(false);
+            commandDropdown.setVisible(false);
         } else {
             boolean connected = deviceCommunicator.connect((String)serialPortSelector.getSelectedItem());
             if (connected) {
                 connectButton.setText("Disconnect");
                 connectionStatusLabel.setText("Connected");
-                connectionStatusLabel.setForeground(new Color(22, 117, 11));
+                connectionStatusLabel.setForeground(MyceliumColors.secondary);
                 commandDropdown.setEnabled(true);
+                commandDropdown.setVisible(true);
             } else {
                 connectionStatusLabel.setText("Connection failed");
-                connectionStatusLabel.setForeground(Color.RED);
+                connectionStatusLabel.setForeground(MyceliumColors.tertiary);
+                commandDropdown.setVisible(false);
                 JOptionPane.showMessageDialog(
                         this, "Failed to connect to device.\n" +
                                 "Please ensure the device is connected and powered on\n",
@@ -319,11 +403,12 @@ public class MyceliumHub extends JFrame {
 
     private void parseLexiconFile(File file) {
         try {
+            /* this is bug? */
             if (deviceCommunicator.isConnected()) {
                 deviceCommunicator.disconnect();
                 connectButton.setText("Connect");
                 connectionStatusLabel.setText("Device loaded, not connected");
-                connectionStatusLabel.setForeground(Color.GRAY);
+                connectionStatusLabel.setForeground(MyceliumColors.foreground);
             }
 
             /* Dump the file to a string */
@@ -332,7 +417,7 @@ public class MyceliumHub extends JFrame {
             JsonNode root = objectMapper.readTree(content);
             currentLexicon = root;
 
-            // NEW: Load plugin if specified
+            /* load plugin if it has one */
             if (root.has("pluginJar")) {
                 String jarFileName = root.get("pluginJar").asText();
                 URLClassLoader pluginLoader = loadPlugin(file.getAbsolutePath(), jarFileName);
@@ -361,17 +446,26 @@ public class MyceliumHub extends JFrame {
                 String protocol = root.get("protocol").asText();
                 if ("USB".equalsIgnoreCase(protocol)) {
                     usingSerial = false;
+                    serialPortSelector.setVisible(false);
                     connectButton.setEnabled(true);
+                    connectButton.setVisible(true);
                     connectionStatusLabel.setText("Ready to connect");
+                    connectionStatusLabel.setForeground(MyceliumColors.secondary);
                     System.out.println("USB protocol detected - ready for device communication");
                 } else if ("USB_SERIAL".equalsIgnoreCase(protocol)) {
                     usingSerial = true;
+                    serialPortSelector.setVisible(true);
                     /* make an entry widget for the serial port */
                     connectButton.setEnabled(true);
+                    connectButton.setVisible(true);
                     connectionStatusLabel.setText("Ready to connect");
+                    connectionStatusLabel.setForeground(MyceliumColors.secondary);
                     System.out.println("USB_SERIAL protocol detected - ready for device communication");
+
+                    refreshSerialPorts(usingSerial);
                 } else {
                     usingSerial = false;
+                    serialPortSelector.setVisible(false);
                     connectButton.setEnabled(false);
                     connectionStatusLabel.setText("Protocol [" + protocol +
                             "] not yet supported");
@@ -379,7 +473,6 @@ public class MyceliumHub extends JFrame {
                 }
             }
 
-            refreshSerialPorts(usingSerial);
 
             if (root.has("commands")) {
                 JsonNode commandsArray = root.get("commands");
@@ -588,6 +681,15 @@ public class MyceliumHub extends JFrame {
     }
 
     public static void main(String[] args) {
+
+        try {
+            /* This might be more compatible or portable... not sure
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+             */
+            UIManager.setLookAndFeel(new FlatLightLaf());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         /* All that must be done in 'main' is to instantiate a MyceliumHub and
         * call setVisible, and the program would work correctly. However, Swing
         * maintains its own thread for the GUI event system, in addition to
@@ -618,8 +720,15 @@ public class MyceliumHub extends JFrame {
         /* Note that we use GridBagLayout here rather than BoxLayout, because
         * it's a lot more configurable. */
         deviceInfoPanel.setLayout(new GridBagLayout());
-        TitledBorder border = BorderFactory.createTitledBorder("Device agnostic fields");
-        border.setTitleFont(border.getTitleFont().deriveFont(16f)); // 16pt size
+        deviceInfoPanel.setBackground(MyceliumColors.background);
+
+        TitledBorder border = BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(EtchedBorder.LOWERED,
+                        MyceliumColors.foreground, MyceliumColors.foregroundLight), "Device agnostic fields"
+        );
+        border.setTitleFont(MyceliumFonts.HEADER);
+        border.setTitleColor(MyceliumColors.foreground);
+
         deviceInfoPanel.setBorder(border);
 
         /* This object is kind of like a "properties struct". You manipulate
@@ -680,7 +789,8 @@ public class MyceliumHub extends JFrame {
     private void addFieldLabel(String text, JPanel panel, GridBagConstraints gbc) {
         JLabel label = new JLabel(text);
         /* Make the font the bold version of whatever font we are using */
-        label.setFont(label.getFont().deriveFont(Font.BOLD));
+        label.setFont(MyceliumFonts.BODY);
+        label.setForeground(MyceliumColors.foreground);
         panel.add(label, gbc);
     }
 
@@ -689,7 +799,8 @@ public class MyceliumHub extends JFrame {
         /* Two dashes make it more clear that a value goes here than if we left
         it blank, in the case that there is not yet a value to put here. */
         JLabel label = new JLabel("--");
-        label.setForeground(Color.DARK_GRAY);
+        label.setFont(MyceliumFonts.SMALL);
+        label.setForeground(MyceliumColors.foreground);
         /* If you don't give them a minimum size, the GUI will re-arrange
         * itself when there's nothing there, which looks bad. */
         label.setMinimumSize(new Dimension(200, 20));

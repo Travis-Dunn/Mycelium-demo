@@ -26,6 +26,15 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.panteleyev</groupId>
+        <artifactId>jpackage-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <mainJar>your-app-${project.version}.jar</mainJar>
+          <mainClass>com.yourcompany.MainClass</mainClass>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
   <properties>
